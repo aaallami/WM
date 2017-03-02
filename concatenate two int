@@ -1,0 +1,5 @@
+public static int concatenation(int i, int j) {
+		int k = Integer.valueOf(String.valueOf(i) + String.valueOf(j));
+		System.out.println(k);
+		return k;
+}
