@@ -1,0 +1,4 @@
+public static void getBit(int n, int k) {
+		System.out.print("bit="+((n >> k) & 1)+"\n");
+		
+	}
