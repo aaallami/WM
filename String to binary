@@ -1,0 +1,8 @@
+String text = "Female";
+    	System.out.println("Text: "+text);
+
+    	String binary = new BigInteger(text.getBytes()).toString(2);
+    	System.out.println("As binary: "+binary);
+
+    	String text2 = new String(new BigInteger(binary, 2).toByteArray());
+    	System.out.println("As text: "+text2);
