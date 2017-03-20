@@ -1,0 +1,222 @@
+package hello;
+
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.Scanner;
+
+public class WMCATEGSION {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		//int pk=0;
+		Scanner inputint = new Scanner(System.in);
+		System.out.println("Enter the first secret key");
+		BigInteger k1= inputint.nextBigInteger();	// enter the first secret key
+		System.out.println("Enter the second secret key");
+		BigInteger k2= inputint.nextBigInteger();;	// enter the second secret key
+		System.out.println("Enter the percentage of considered tupls to be encoded secret key");
+		long e1= inputint.nextInt();
+		System.out.println("done entering all the keys");
+		BigInteger e2= new BigInteger(String.valueOf(e1));
+		System.out.println("done converting the e1 to biginteger e2");
+
+		int[] wm = {1,1,0,1,0,1,0,1,0,0,1,1,1,0,1,0,1,0,1,0,0,1,1,1,0,1,0,1,0,1,0,0,1,1,1,0,1,0,1,0,1,0,0,1};// The water mark which need to be altered using majority voting technique
+		BigInteger t;
+		int N,Ne,t2=0;
+		N= getRowNumber();	// get the number of tuples in the database
+		BigInteger bigna=new BigInteger(String.valueOf(N));//number of bits of number of instances of attribute a (na)
+		Ne=bigna.bitLength();
+	    BigInteger bigNe=new BigInteger(String.valueOf(Ne));//number of bits of number of instances of attribute a (na)
+		//-------------------------------------------------------------------------------
+		//connecting to the database and plugging the water mark;
+		//-------------------------------------------------------------------------------
+		try{ 
+			Class.forName("com.mysql.jdbc.Driver");  
+			Connection con=DriverManager.getConnection(  
+			"jdbc:mysql://localhost:3306/newdatatest","root","");  
+			//here sonoo is database name, root is username and password  
+			Statement stmt=con.createStatement();  
+			ResultSet rs=stmt.executeQuery("select * from Sheet1");  
+			while(rs.next())  {
+				//System.out.println(rs.getString(3));
+				int pk;
+				pk=rs.getInt(1);
+				System.out.println("primarykey= "+pk);
+				//System.out.println(rs.getString(3));	// get the class of worker attribute from the table
+				BigInteger concat= new BigInteger((String.valueOf(pk) + k1.toString()));	//concatenation process of primary key and 1st secret key k1
+				System.out.println("concatenation pk and k1= "+concat);
+				BigInteger concat2= new BigInteger((String.valueOf(pk) + k2.toString()));	//concatenation process of primary key and k1
+				System.out.println("concatenation pk and k2= "+concat2);
+				BigInteger hash1=hex2Decimal(getMD5(concat.toString()));		//hashing pk and k1\
+				System.out.println("hash1= "+hash1);
+				BigInteger hash2=hex2Decimal(getMD5(concat2.toString()));	//hashing pk and k2
+				System.out.println("hash2= "+hash2);
+				BigInteger hash1rem = hash1.remainder(e2);
+				System.out.println("hash1 reminder after module of e2= "+hash1rem);
+				System.out.println("---------------------------------------------------------------------------------");
+
+				
+				if( hash1rem.equals(BigInteger.ZERO))
+					{
+					BigInteger msb1 = hash1.shiftRight(hash1.bitLength() - bigna.bitLength());//get the MSB of H(pk,k1)
+					BigInteger msb2 = hash2.shiftRight(hash2.bitLength() - bigNe.bitLength());//get the MSB of H(pk,k1)
+							if ((msb1.testBit(0)==false) && (wm[msb2.intValue()]==1))
+								{
+									t=msb1.flipBit(0);
+									t2=t.intValue();
+								}
+							else if ((msb1.testBit(0)==true) && (wm[msb2.intValue()]==0))
+								{
+									t=msb1.flipBit(0);
+									t2=t.intValue();
+								}
+							else
+							{
+								t2=msb1.intValue();
+							}
+					System.out.println("t2= "+t2);
+					System.out.println(selecttuple(""+t2));
+					tupleupdate(selecttuple(""+t2),pk);
+					//System.out.println("pk= "+rs.getInt(1)+"   classworker   =   "+rs.getInt(3));;
+					System.out.println("------------------------------------------------------------------------------------------------");
+					}
+				System.out.println("no work have been done");
+				System.out.println("------------------------------------------------------------------------------------------------");
+				
+			}con.close();  
+			} catch(Exception e){ System.out.println(e);}  
+		
+	}
+	
+//-----------------------------------------------------------------------------------------------------
+// hashing function using MD5
+	
+	public static String getMD5(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] messageDigest = md.digest(input.getBytes());
+            BigInteger number = new BigInteger(1, messageDigest);
+            String hashtext = number.toString(16);
+            // Now we need to zero pad it if you actually want the full 32 chars.
+            while (hashtext.length() < 32) {
+                hashtext = "0" + hashtext;
+            }
+            return hashtext;
+        }
+        catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+//---------------------------------------------------------------------------------------------------------
+	
+//---------------------------------------------------------------------------------------------------------	
+// converting Hex 
+	public static BigInteger hex2Decimal(String s) {
+        String digits = "0123456789ABCDEF";
+        s = s.toUpperCase();
+        BigInteger val = BigInteger.ZERO;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            int d = digits.indexOf(c);
+            val = val.multiply(BigInteger.valueOf(16));
+            val=val.add(BigInteger.valueOf(d));
+        }
+        //BigInteger b1 = new BigInteger(String.valueOf(val));
+        return val;
+    }	
+//	
+//---------------------------------------------------------------------------------------------------------	
+	//Modulo operation
+	public static boolean modulo(BigInteger val, String e) {
+	    if(!val.mod(new BigInteger(e)).equals(BigInteger.ZERO))
+	    	
+	        return true;
+	    return false;
+	}
+	
+//---------------------------------------------------------------------------------------------------------	
+	//get the # of tuples in DB
+//---------------------------------------------------------------------------------------------------------	
+	public static int getRowNumber(){
+
+		   int numberRow = 0;
+		   //Connection mysqlConn = DriverManager.getConnection(HOST, USER_ID, PASSWORD);
+
+		try{
+			Class.forName("com.mysql.jdbc.Driver");  
+			Connection con2=DriverManager.getConnection(  
+			"jdbc:mysql://localhost:3306/newdatatest","root","");  
+			//here sonoo is database name, root is username and password  
+		    //String query = "select count(*) from dataTable";
+		    //Object mysqlConn;
+		    Statement st = con2.createStatement();
+		    ResultSet rs = st.executeQuery("select count(*) from Sheet1");
+		    while(rs.next()){
+		        numberRow = rs.getInt("count(*)");
+		    }con2.close();
+		}catch (Exception ex){
+		    System.out.println(ex.getMessage());
+		}
+		return numberRow;
+		}
+	//---------------------------------------------------------------------------------------------------------	
+		//update a tuples in DB
+	//---------------------------------------------------------------------------------------------------------	
+	public static void tupleupdate(String set, int where){
+		try{
+			Class.forName("com.mysql.jdbc.Driver");  
+			Connection con4=DriverManager.getConnection(  
+			"jdbc:mysql://localhost:3306/newdatatest","root","");  
+			//Object mysqlConn;
+		       	PreparedStatement st = con4.prepareStatement("UPDATE Sheet1 SET C = ? " + " WHERE A = ?");
+		    	st.setString(1, set);
+				st.setInt(2, where);//499 is the one that will be udated bu the new value 2 
+
+				st.executeUpdate();
+
+				System.out.println("Record is updated to DBUSER table!");
+				con4.close();
+		}
+		catch (Exception ex){
+		    System.out.println(ex.getMessage());
+
+		}	
+	}
+	
+//-----------------------------------------------------------------------------------------------------------------
+	// get a specific value of an attribute of specific a record
+//-------------------------------------------------------------------------------------------------------------
+public static String selecttuple(String pk){
+		
+		try{
+			Class.forName("com.mysql.jdbc.Driver");  
+			Connection con3=DriverManager.getConnection(  
+			"jdbc:mysql://localhost:3306/newdatatest","root","");  
+			Statement stmt=con3.createStatement();  
+			ResultSet rs2=stmt.executeQuery("SELECT C FROM Sheet1 WHERE A ="+pk);
+			Class.forName("com.mysql.jdbc.Driver");  
+			
+			while(rs2.next()) {    	
+				return(rs2.getString(1));
+				}con3.close();
+			
+		}catch (Exception ex){
+		    System.out.println(ex.getMessage());
+
+		}
+		return "";
+		}
+//-----------------------------------------------------------------------------------------------------------------
+	// get a specific value of an attribute of specific a record
+//-------------------------------------------------------------------------------------------------------------
+
+
+	
+	
+}
